@@ -139,40 +139,58 @@ public class PlayerCharacterController : MonoBehaviour
         }
     }
 
-    private IEnumerator Shoot()
+private IEnumerator Shoot()
+{
+    if (_canShoot && _weaponManager.ActiveWeapon.CanReload())
     {
-        if (_canShoot)
+        _weaponManager.ActiveWeapon.PlayShootAnimation();
+
+        yield return new WaitForSeconds(_weaponManager.ActiveWeapon.DelayBeforeRayCast);
+
+        Vector3 shootRayOrigin = _playerCamera.ViewportToWorldPoint(new Vector3(0.5f, 0.5f, 0.0f));
+
+        if (!_isAimingDownSight)
         {
-            _weaponManager.ActiveWeapon.PlayShootAnimation();
-
-            yield return new WaitForSeconds(_weaponManager.ActiveWeapon.DelayBeforeRayCast);
-
-            Vector3 shootRayOrigin = _playerCamera.ViewportToWorldPoint(new Vector3(0.5f, 0.5f, 0.0f));
-
-            if (!_isAimingDownSight)
-            {
-                float bloom = _weaponManager.ActiveWeapon.HipfireBloom;
-                shootRayOrigin += (UnityEngine.Random.insideUnitSphere * bloom);
-            }
-
-            float range = _weaponManager.ActiveWeapon.Range;
-
-            if (Physics.Raycast(shootRayOrigin, _playerCamera.transform.forward, out RaycastHit hit, range))
-            {
-                if (hit.collider.CompareTag("Enemy"))
-                {
-                    Enemy enemy = hit.collider.gameObject.GetComponent<Enemy>();
-                    enemy.Die();
-                }
-            }
-
-            ApplyRecoil();
-
-            _crosshair.SetScale(CrosshairScale.Shoot, 1f);
+            float bloom = _weaponManager.ActiveWeapon.HipfireBloom;
+            shootRayOrigin += (UnityEngine.Random.insideUnitSphere * bloom);
         }
-    }
 
-   
+        float range = _weaponManager.ActiveWeapon.Range;
+
+        if (Physics.Raycast(shootRayOrigin, _playerCamera.transform.forward, out RaycastHit hit, range))
+        {
+            if (hit.collider.CompareTag("Enemy"))
+            {
+                Enemy enemy = hit.collider.gameObject.GetComponent<Enemy>();
+                enemy.Die();
+            }
+        }
+
+        ApplyRecoil();
+
+        _crosshair.SetScale(CrosshairScale.Shoot, 1f);
+
+        _weaponManager.ActiveWeapon.ReduceAmmo(); // Reduz a munição da arma
+    }
+    else if (_canShoot && !_weaponManager.ActiveWeapon.CanReload())
+    {
+        _weaponManager.ActiveWeapon.Reload(); // Recarrega a arma
+    }
+}
+
+
+private void ReloadWeapon()
+{
+    if (_weaponManager.ActiveWeapon != null && !_weaponManager.ActiveWeapon.CanReload())
+    {
+        _weaponManager.ActiveWeapon.PlayReloadAnimation();
+        StartCoroutine(PerformReload());
+    }
+}
+   private IEnumerator PerformReload(){
+    yield return new WaitForSeconds(_weaponManager.ActiveWeapon.ReloadTime);
+    _weaponManager.ActiveWeapon.Reload();
+    }
     /// <summary>
     /// Gets active weapons recoil amount and applies it to the camera movement
     /// </summary>
