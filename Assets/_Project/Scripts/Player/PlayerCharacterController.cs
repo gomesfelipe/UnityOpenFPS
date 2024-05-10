@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using DG.Tweening;
 
 [RequireComponent(typeof(CharacterController), typeof(InputManager))]
 public class PlayerCharacterController : MonoBehaviour
@@ -177,18 +178,14 @@ public class PlayerCharacterController : MonoBehaviour
     /// </summary>
     private void ApplyRecoil()
     {
-        _mouseY -= _weaponManager.ActiveWeapon.RecoilAmount;
-        _recoil = true;
-        StartCoroutine(DisableRecoil());
-    }
-
+    float targetRecoil = Mathf.Clamp(_mouseY - _weaponManager.ActiveWeapon.RecoilAmount, -30f, float.MaxValue);
     /// <summary>
     //When we apply the recoil the camera will lerp up to the recoil position, we'll disable this after a moment for smooth camera movement after shooting
     /// </summary>
-    /// <returns></returns>
-    private IEnumerator DisableRecoil()
-    {
-        yield return new WaitForSeconds(_timeBeforeRecoilDisabled);
-        _recoil = false;
+    /// <returns></returns> 
+    DOTween.To(() => _mouseY, x => _mouseY = x, targetRecoil, _weaponManager.ActiveWeapon.RecoilSpeed / 100f)
+        .SetEase(Ease.OutQuad) // Ajuste a curva de animação conforme necessário
+        .OnComplete(() => _recoil = false); // Desativa o recuo ao final da animação
     }
+
 }
