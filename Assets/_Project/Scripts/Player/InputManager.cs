@@ -33,9 +33,7 @@ public class InputManager : MonoBehaviour
         }
         public void OnCrouch(InputAction.CallbackContext context)
         {
-            if (context.performed)
-            {
-            }
+            // Implement crouching functionality here
         }
 
         public void OnAiming(InputAction.CallbackContext context){

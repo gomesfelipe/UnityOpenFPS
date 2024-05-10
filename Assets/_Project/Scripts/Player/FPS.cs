@@ -370,10 +370,10 @@ public partial class @FPS: IInputActionCollection2, IDisposable
                 {
                     ""name"": """",
                     ""id"": ""c1376028-d742-4d8f-b88f-860ab60f57ae"",
-                    ""path"": """",
+                    ""path"": ""<Gamepad>/leftShoulder"",
                     ""interactions"": """",
                     ""processors"": """",
-                    ""groups"": """",
+                    ""groups"": ""Gamepad"",
                     ""action"": ""Run"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false

@@ -1,45 +1,34 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+[RequireComponent(typeof(CharacterController), typeof(InputManager))]
 public class PlayerCharacterController : MonoBehaviour
-{    private InputManager _inputManager;
+{    
+    private InputManager _inputManager;
     private CharacterController _characterController;
     private Vector3 _moveDirection = Vector3.zero;
-    private float _mouseY = 0;
-    private bool _isAimingDownSight;
-
-    [SerializeField]
-    private float _walkingSpeed = 7.5f, _runningSpeed = 11.5f;
-    [SerializeField]
-    private float _jumpSpeed = 8.0f,  _gravity = 9.8f;
-    [SerializeField]
-    private Camera _playerCamera;
-    [SerializeField]
-    private float _lookSpeed = 2.0f;
-    [SerializeField]
-    private float _lookXLimit = 45.0f;
-    [SerializeField]
-    private bool _canMove = true, _canShoot = false;
-
-    [SerializeField]
-    private LayerMask _rayCastIgnore;
-    [SerializeField]
-    private GameObject _crossHairGameObject;
-    [SerializeField]
-    private float _timeBeforeRecoilDisabled = 0.3f;
-    private Crosshair _crosshair;
-    private WeaponManager _weaponManager;
-
-
-    private bool _recoil;
-
+    [SerializeField] private float _walkingSpeed = 7.5f, _runningSpeed = 11.5f;
+    [SerializeField] private float _jumpSpeed = 8.0f,  _gravity = 15f;
+    [SerializeField] private Camera _playerCamera;
+    [SerializeField] private float _lookSpeed = 2.0f, _lookXLimit = 45.0f;
+    [SerializeField] private bool _canMove = true, _canShoot = false;
     public bool IsSprinting
     {
         get;
         set;
     }
 
+#region Aiming parameters
+    [SerializeField] private LayerMask _rayCastIgnore;
+    [SerializeField] private GameObject _crossHairGameObject;
+    [SerializeField]private float _timeBeforeRecoilDisabled = 0.3f;
+    protected Crosshair _crosshair;
+    protected WeaponManager _weaponManager; 
+    private float _mouseY = 0;
+    private bool _isAimingDownSight;   
+    [SerializeField] private bool _recoil;   
     public bool IsAimingDownSight
     {
         get
@@ -47,6 +36,7 @@ public class PlayerCharacterController : MonoBehaviour
             return _isAimingDownSight;
         }
     }
+#endregion
 
     void Start()
     {
@@ -61,74 +51,72 @@ public class PlayerCharacterController : MonoBehaviour
 
     void Update()
     {
-        // We are grounded, so recalculate move direction based on axes
-        Vector3 forward = transform.TransformDirection(Vector3.forward);
-        Vector3 right = transform.TransformDirection(Vector3.right);
-
-        // Press Left Shift to run
-        IsSprinting = _inputManager.isSprinting;
-
-        float curSpeedX = _canMove ? (IsSprinting ? _runningSpeed : _walkingSpeed) * _inputManager.movementInput.y: 0;
-        float curSpeedY = _canMove ? (IsSprinting ? _runningSpeed : _walkingSpeed) * _inputManager.movementInput.x: 0;
-
-        float movementDirectionY = _moveDirection.y;
-        _moveDirection = (forward * curSpeedX) + (right * curSpeedY);
-
-        if (_inputManager.jumpPressed && _canMove && _characterController.isGrounded)
-        {
-            _moveDirection.y = _jumpSpeed;
-        }
-        else
-        {
-            _moveDirection.y = movementDirectionY;
-        }
-
-        if (_inputManager.isAiming)
-        {
-            _isAimingDownSight = true;           
-        }
-        else
-        {
-            _isAimingDownSight = false;
-        }
-
-        bool crosshairVisible = (!_isAimingDownSight) && (!IsSprinting);
-        _canShoot = !IsSprinting;
-
-        _crossHairGameObject.SetActive(crosshairVisible);
-
-        if (crosshairVisible)
-        {
-            if ((curSpeedX + curSpeedY) > 0)
+        HandleInput();
+    }
+    protected void FixedUpdate(){
+        HandleMovement();
+    }
+    protected void HandleInput(){
+            // Press Left Shift to run
+            IsSprinting = _inputManager.isSprinting;
+            
+            if (_inputManager.isFiring)
             {
-                _crosshair.SetScale(CrosshairScale.Walk);
+                StartCoroutine(Shoot());
+            }
+            _isAimingDownSight = _inputManager.isAiming ? true : false; 
+    }
+    protected void HandleMovement(){
+            // We are grounded, so recalculate move direction based on axes
+            Vector3 forward = transform.TransformDirection(Vector3.forward);
+            Vector3 right = transform.TransformDirection(Vector3.right);
+            float curSpeedX = _canMove ? (IsSprinting ? _runningSpeed : _walkingSpeed) * _inputManager.movementInput.y: 0;
+            float curSpeedY = _canMove ? (IsSprinting ? _runningSpeed : _walkingSpeed) * _inputManager.movementInput.x: 0;
+
+            float movementDirectionY = _moveDirection.y;
+            _moveDirection = (forward * curSpeedX) + (right * curSpeedY);
+                
+            if (_inputManager.jumpPressed && _canMove && _characterController.isGrounded)
+            {
+                _moveDirection.y = _jumpSpeed;
             }
             else
             {
-                _crosshair.SetScale(CrosshairScale.Default);
+                _moveDirection.y = movementDirectionY;
             }
-        }
 
-        // Apply gravity. Gravity is multiplied by deltaTime twice (once here, and once below
-        // when the moveDirection is multiplied by deltaTime). This is because gravity should be applied
-        // as an acceleration (ms^-2)
-        if (!_characterController.isGrounded)
-        {
-            _moveDirection.y -= _gravity * Time.deltaTime;
-        }
 
-        // Move the controller
-        _characterController.Move(_moveDirection * Time.deltaTime);
+            bool crosshairVisible = (!_isAimingDownSight) && (!IsSprinting);
+            _canShoot = !IsSprinting;
 
-        // Player and Camera rotation
-        UpdateLookRotation();
+            _crossHairGameObject.SetActive(crosshairVisible);
 
-        if (_inputManager.isFiring)
-        {
-            StartCoroutine(Shoot());
-        }
+            if (crosshairVisible)
+            {
+                if ((curSpeedX + curSpeedY) > 0)
+                {
+                    _crosshair.SetScale(CrosshairScale.Walk);
+                }
+                else
+                {
+                    _crosshair.SetScale(CrosshairScale.Default);
+                }
+            }
+
+            // Apply gravity. Gravity is multiplied by deltaTime twice (once here, and once below
+            // when the moveDirection is multiplied by deltaTime). This is because gravity should be applied
+            // as an acceleration (ms^-2)
+            if (!_characterController.isGrounded)
+            {
+                _moveDirection.y -= _gravity * Time.deltaTime;
+            }
+
+            // Move the controller
+            _characterController.Move(_moveDirection * Time.deltaTime);
+
+            // Player and Camera rotation
+            UpdateLookRotation();
     }
-
     private void UpdateLookRotation()
     {
         if (_canMove)
@@ -163,7 +151,7 @@ public class PlayerCharacterController : MonoBehaviour
             if (!_isAimingDownSight)
             {
                 float bloom = _weaponManager.ActiveWeapon.HipfireBloom;
-                shootRayOrigin += (Random.insideUnitSphere * bloom);
+                shootRayOrigin += (UnityEngine.Random.insideUnitSphere * bloom);
             }
 
             float range = _weaponManager.ActiveWeapon.Range;
